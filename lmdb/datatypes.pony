@@ -22,7 +22,7 @@ use @memmove[Pointer[None]](dst: Pointer[None], src: Pointer[None], len: USize)
 
 // Data in can be any of these types.
 type MDBdata is (Array[U8] | String | U32 | U64 | U128 )
-type _OptionalData is MaybePointer[MDBValue]
+type _OptionalData is NullablePointer[MDBValue]
 
 // Data out is always Array[U8].
 
@@ -128,7 +128,7 @@ primitive MDBConvert
     var s: String iso = recover iso String.create( len ) end
     var n: USize = 0
     while n < a.size() do
-      try s.push( a(n) ) end
+      try s.push( a(n)? ) end
       n=n+1
       end
     consume s

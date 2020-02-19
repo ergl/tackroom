@@ -9,7 +9,7 @@ use @mdb_cursor_count[Stat]( cur: Pointer[MDBcur], count: Pointer[U32] )
 use @mdb_cursor_close[None]( cur: Pointer[MDBcur] )
 use @mdb_cursor_renew[Stat]( txn: Pointer[MDBtxn], curs: Pointer[MDBcur] )
 
-// Op-codes for cursor operations.			 
+// Op-codes for cursor operations.
 primitive MDBop
   fun first(): U32 => 0           // Position at first key/data item
   fun first_dup(): U32 => 1       // Position at first data item of current key.
@@ -70,7 +70,7 @@ class MDBCursor
      var keyp = MDBValue.create()
      var datap = MDBValue.create()
      let err = @mdb_cursor_get( _mdbcur, keyp, datap, op )
-     _env.report_error( err )
+     _env.report_error( err )?
     (keyp.array(), datap.array())
 
   fun ref seek( key: MDBdata, partial: Bool = false ):
@@ -82,7 +82,7 @@ class MDBCursor
     var datap = MDBValue.create()
     let err = @mdb_cursor_get( _mdbcur, keyp, datap,
       if partial then MDBop.set_range() else MDBop.set() end )
-    _env.report_error( err )
+    _env.report_error( err )?
     (keyp.array(), datap.array())
 
   fun ref update( key: MDBdata, value: MDBdata, flags: FlagMask = 0 ) ? =>
@@ -94,7 +94,7 @@ class MDBCursor
     var keyp = MDBValue.create(key)
     var datap = MDBValue.create(value)
     let err = @mdb_cursor_put( _mdbcur, keyp, datap, flags )
-     _env.report_error( err )
+     _env.report_error( err )?
 
   fun ref delete( flags: FlagMask = 0 ) ? =>
     """
@@ -105,7 +105,7 @@ class MDBCursor
     This flag may only be specified if the database was opened with DUPSORT.
     """
     let err = @mdb_cursor_del( _mdbcur, flags )
-    _env.report_error( err )
+    _env.report_error( err )?
 
   fun ref dupcount(): U32 ? =>
     """
@@ -114,5 +114,5 @@ class MDBCursor
     """
     var count: U32 = 0
     let err = @mdb_cursor_count( _mdbcur, addressof count )
-     _env.report_error( err )
+     _env.report_error( err )?
     count

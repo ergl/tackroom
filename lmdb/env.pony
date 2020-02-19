@@ -86,6 +86,8 @@ struct MDBstat
   var opages: USize = 0   // Overflow page count
   var entries: USize = 0  // Total record count
 
+  new create() => None
+
 // Environment info
 struct MDBinfo
   """
@@ -125,7 +127,7 @@ class MDBEnvironment
     // The Notifier is optional.
     _notifier = note
     let err = @mdb_env_create( addressof _mdbenv )
-    report_error( err )
+    report_error( err )?
 
   fun ref open( path: String, flags: FlagMask, mode: USize ) ? =>
     """
@@ -136,8 +138,8 @@ class MDBEnvironment
 	path.cstring(),
 	flags or MDBenvflag.notls(),  // Force not using Thread Local Storage
 	mode )
-    report_error( err )
- 
+    report_error( err )?
+
   fun ref copy( path: String, flags: FlagMask = 0 ) ? =>
     """
     Make a copy of the entire environment.  This can be used to
@@ -148,7 +150,7 @@ class MDBEnvironment
     else
       @mdb_env_copy2( _mdbenv, path.cstring(), flags )
     end
-    report_error( err )
+    report_error( err )?
 
   fun ref info(): MDBinfo =>
     """
@@ -170,7 +172,7 @@ class MDBEnvironment
     """
     Insure that the underlying file is up to date.
     """
-    report_error( @mdb_env_sync( _mdbenv, if force then 1 else 0 end ))
+    report_error( @mdb_env_sync( _mdbenv, if force then 1 else 0 end ))?
 
   fun ref close() =>
     @mdb_env_close( _mdbenv )
@@ -190,7 +192,7 @@ class MDBEnvironment
     Get current Environment flags
     """
     var flags: FlagMask = 0
-    report_error( @mdb_env_get_flags( _mdbenv, addressof flags ))
+    report_error( @mdb_env_get_flags( _mdbenv, addressof flags ))?
     flags
 
   fun ref get_path(): String ? =>
@@ -198,7 +200,7 @@ class MDBEnvironment
     Get the file system path where the environment is stored.
     """
     var sptr: Pointer[U8] val = recover val Pointer[U8].create() end
-    report_error( @mdb_env_get_path( _mdbenv, addressof sptr ))
+    report_error( @mdb_env_get_path( _mdbenv, addressof sptr ))?
     // We have to copy the string because it is in the mapped area.
     recover val String.copy_cstring( sptr ) end
 
@@ -211,7 +213,7 @@ class MDBEnvironment
     large as possible, to accommodate future growth of the database.
     This function should be called after create and before open.
     """
-    report_error( @mdb_env_set_mapsize( _mdbenv, size ))
+    report_error( @mdb_env_set_mapsize( _mdbenv, size ))?
 
   fun ref set_maxslots( count: USize ) ? =>
     """
@@ -224,14 +226,14 @@ class MDBEnvironment
     MDBtxn object until it or the MDBenv object is destroyed.
     This function may only be called after create() and before open().
     """
-    report_error( @mdb_env_set_maxreaders( _mdbenv, count ))
+    report_error( @mdb_env_set_maxreaders( _mdbenv, count ))?
 
   fun ref slots() ? =>
     """
     Get the maximum number of threads/reader slots for the environment.
     """
     var count: USize = 0
-    report_error( @mdb_env_get_maxreaders( _mdbenv, addressof count ))
+    report_error( @mdb_env_get_maxreaders( _mdbenv, addressof count ))?
     count
 
   fun ref set_maxdb( count: USize ) ? =>
@@ -245,7 +247,7 @@ class MDBEnvironment
     expensive: 7-120 words per transaction, and every DB open does a
     linear search of the opened slots.
     """
-    report_error( @mdb_env_set_maxdbs( _mdbenv, count ))
+    report_error( @mdb_env_set_maxdbs( _mdbenv, count ))?
 
   fun ref maxkeysize(): USize =>
     """
@@ -258,7 +260,7 @@ class MDBEnvironment
     """
     Set application information associated with the Environment.
     """
-    report_error( @mdb_env_set_userctx( _mdbenv, infop ))
+    report_error( @mdb_env_set_userctx( _mdbenv, infop ))?
 
   fun ref get_appinfo(): Pointer[Any] =>
     """
@@ -282,9 +284,9 @@ class MDBEnvironment
 	    @mdb_txn_begin( _mdbenv,
 		p.handle(),
 		flags, addressof txnhdl )
-      else Stat(0) end
-    report_error( err )
-	
+      end
+    report_error( err )?
+
     MDBTransaction.create( this, txnhdl )
 
   fun ref report_error( code: Stat ) ? =>
@@ -306,4 +308,3 @@ class MDBEnvironment
 
   fun ref getenv(): Pointer[MDBenv] =>
     _mdbenv
-		

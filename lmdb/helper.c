@@ -4,4 +4,3 @@ void * noop( void * input )
 {
    return input;
 }
-

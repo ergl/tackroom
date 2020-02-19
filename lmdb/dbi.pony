@@ -1,6 +1,6 @@
 use "debug"
 use @mdb_dbi_close[None]( env: Pointer[MDBenv], dbi: Pointer[MDBdbi] )
-use @mdb_stat[Stat]( txn: Pointer[MDBtxn], dbi: Pointer[MDBdbi], dbstat: MDBstat )
+use @mdb_stat[Stat]( txn: Pointer[MDBtxn], dbi: Pointer[MDBdbi], dbstat: NullablePointer[MDBstat] )
 use @mdb_put[Stat]( txn: Pointer[MDBtxn] tag,
       dbi: Pointer[MDBdbi] tag,
       key: MDBValue, data: MDBValue,
@@ -48,7 +48,7 @@ class MDBDatabase
     Retrieve statistics for a database.
     """
     var dbstats = MDBstat.create()
-    let err = @mdb_stat( _mdbtxn, _mdbdbi, dbstats )
+    let err = @mdb_stat( _mdbtxn, _mdbdbi, NullablePointer[MDBstat](dbstats) )
     dbstats
 
   fun ref flags(): FlagMask =>
@@ -58,7 +58,7 @@ class MDBDatabase
     var flagp: FlagMask = 0
     let err = @mdb_dbi_flags( _mdbtxn, _mdbdbi, addressof flagp )
     flagp
- 
+
   fun ref close() =>
     """
     Close a database handle. Normally unnecessary. Use with care:
@@ -83,7 +83,7 @@ class MDBDatabase
     environment and close the DB handle.
     """
     let err = @mdb_drop( _mdbtxn, _mdbdbi, if del then 1 else 0 end )
-    _env.report_error( err )
+    _env.report_error( err )?
 
     fun ref apply( key: MDBdata ): Array[U8] ? =>
     """
@@ -99,7 +99,7 @@ class MDBDatabase
     var data: MDBValue = MDBValue.create()
     var keybuf = MDBValue.create( key )
     let err = @mdb_get( _mdbtxn, _mdbdbi, keybuf, data)
-    _env.report_error( err )
+    _env.report_error( err )?
     data.array()
 
   fun ref update( key: MDBdata, value: MDBdata, flag: FlagMask = 0 ) ? =>
@@ -115,7 +115,7 @@ class MDBDatabase
 
     let err = @mdb_put( _mdbtxn, _mdbdbi,
          keydesc, valdesc, flag )
-    _env.report_error( err )
+    _env.report_error( err )?
 
   fun ref delete( key: MDBdata, data: (MDBdata | None) = None ) ? =>
     """
@@ -134,12 +134,12 @@ class MDBDatabase
     | None =>
         let err = @mdb_del( _mdbtxn, _mdbdbi,
             keydesc, _OptionalData.none())
-	_env.report_error( err )
+	_env.report_error( err )?
     | let d: MDBdata =>
 	var valdesc = MDBValue.create(d)
 	let err = @mdb_del( _mdbtxn, _mdbdbi,
 		keydesc, _OptionalData.create(valdesc) )
-	_env.report_error( err )
+	_env.report_error( err )?
     end
 
   fun ref cursor(): MDBCursor ? =>
@@ -153,20 +153,20 @@ class MDBDatabase
     ends, and will otherwise be closed when its transaction ends.
     A cursor in a read-only transaction must be closed explicitly, before
     or after its transaction ends. It can be reused with
-    cursor.renew() before finally closing it. 
+    cursor.renew() before finally closing it.
     """
     var cur = Pointer[MDBcur].create()
     let err = @mdb_cursor_open( _mdbtxn, _mdbdbi, addressof cur )
-    _env.report_error( err )
+    _env.report_error( err )?
     MDBCursor.create( _env, cur )
 
   // These functions return record sequence queries that will return
   // all or a selected subset of a databse, using the Pony iterator notation.
-  fun ref all(): MDBSequence ? => MDBSequence.create( this, None )
+  fun ref all(): MDBSequence ? => MDBSequence.create( this, None )?
   fun ref group( start: MDBdata ): MDBSequence ? =>
-    MDBSequence.create( this, start )
+    MDBSequence.create( this, start )?
   fun ref partial( start: MDBdata): MDBSequence ? =>
-    MDBSequence.create( this, start, true )
+    MDBSequence.create( this, start, true )?
 
 class MDBSequence
   """
@@ -185,7 +185,7 @@ class MDBSequence
 	  start': (MDBdata | None) = None,
 	  partial': Bool = false ) ? =>
     dbi = dbi'
-    curs = dbi.cursor()
+    curs = dbi.cursor()?
     start = match start'
 	| None => None
 	else
@@ -213,20 +213,20 @@ class MDBSequence
         // and clear the first-time flag.
         first = false
         match start
-	  | let skey: MDBdata => curs.seek( skey, partial )
+	  | let skey: MDBdata => curs.seek( skey, partial )?
 	  else
-           curs( MDBop.first() )
+           curs( MDBop.first() )?
 	  end
       else
         // Subsequent times, get the next record in that series.
         match start
           | let skey: MDBdata =>
 	      if partial then
-                curs( MDBop.next() )
+                curs( MDBop.next() )?
 	      else
-	        curs( MDBop.next_dup() )
+	        curs( MDBop.next_dup() )?
 	      end
-	  else curs( MDBop.next() )
+	  else curs( MDBop.next() )?
         end
        end
 
@@ -248,27 +248,27 @@ class MDBSequence
 	if leading.size() > a2.size() then return false end
 	var i: USize = 0
 	while i < leading.size() do
-	  try if leading(i) != a2(i) then return false end
+	  try if leading(i)? != a2(i)? then return false end
 	    else return false end
 	  i=i+1
         end
       true
     else false end
-	      
+
   fun ref next(): (Array[U8],Array[U8]) =>
     """
     Return the next record in the series.  This was actually just fetched.
     """
     match dbi.indexfor()
      | let other: MDBDatabase =>
-        try (nextkey,other( nextkey ))
+        try (nextkey,other( nextkey )?)
 	else (Array[U8].create(), Array[U8].create()) end
      else
 	(nextkey, nextval)
      end
 
   fun ref dispose() => curs.close()
-	
+
 class MDBPairIter is Iterator[(Array[U8],Array[U8])]
   """
   Iterator that returns both keys and values

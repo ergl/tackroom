@@ -13,4 +13,3 @@ helper:
 
 clean:
 	rm -f libhelper.a helper.o
-

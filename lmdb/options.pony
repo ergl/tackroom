@@ -46,4 +46,3 @@ primitive MDBputflag
   fun append(): FlagMask => 0x20000 //  Data is being appended, don't split full pages.
   fun appenddup(): FlagMask => 0x40000 // Duplicate data is being appended, don't split full pages.
   fun multiple(): FlagMask => 0x80000 // Store multiple data items in one call. Only for #MDB_DUPFIXED.
-

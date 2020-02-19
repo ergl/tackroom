@@ -1,6 +1,6 @@
 /* All LMDB data operations take place within a transaction.
 */
-use @mdb_txn_id[U32]( txn: Pointer[MDBtxn] tag )   
+use @mdb_txn_id[U32]( txn: Pointer[MDBtxn] tag )
 use @mdb_txn_commit[Stat]( txn: Pointer[MDBtxn] tag )
 use @mdb_txn_abort[None]( txn: Pointer[MDBtxn] tag )
 use @mdb_txn_reset[None]( txn: Pointer[MDBtxn] tag )
@@ -44,7 +44,7 @@ class MDBTransaction
     Only write-transactions free cursors.
     """
     let err = @mdb_txn_commit( _mdbtxn )
-    _env.report_error( err )
+    _env.report_error( err )?
 
   fun ref abort() =>
     """
@@ -118,6 +118,5 @@ class MDBTransaction
     var dbi: Pointer[MDBdbi] = Pointer[MDBdbi].create()
     let err = @mdb_dbi_open( _mdbtxn, namep,
         flags, addressof dbi )
-    _env.report_error( err )
+    _env.report_error( err )?
     MDBDatabase.create( _env, _mdbtxn, dbi )
-
