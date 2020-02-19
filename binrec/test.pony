@@ -32,7 +32,7 @@ actor Main
       b1.add_pair( U8(1), "foo" )
       b1.add( "Apples" )
       b1.add( U16(200) )
-      let bytes: Array[U8] val = recover val [1,2,3,4,5,6,7,8] end
+      let bytes: Array[U8] val = recover val [1;2;3;4;5;6;7;8] end
       b1.add( bytes )
       b1.add( U32(5000) )
       b1.add( "A reasonably long string" )
@@ -40,19 +40,18 @@ actor Main
       env.out.writev( b1.data() )
     end
 
-      
-class HaveInput is StdinNotify
+
+class HaveInput is InputNotify
   """
   Handle events from reading stdin.
   """
   let _parent: Main
-  
+
   new iso create( parent': Main tag ) =>
     _parent = parent'
 
   fun ref apply( data: Array[U8] iso ) =>
-    _parent.input( consume data )    
+    _parent.input( consume data )
 
   fun ref dispose() =>
     _parent.eof()
-    

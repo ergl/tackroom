@@ -61,7 +61,7 @@ class BinRecWriter
   fun ref _add_none() =>
     _buffer.u8( _BRDT.none() )
 
-  fun ref <add_pair( a1: BinType, a2: BinType ) =>
+  fun ref add_pair( a1: BinType, a2: BinType ) =>
     add( a1 )
     add( a2 )
 
@@ -166,7 +166,7 @@ class BinRecReader
     The high-order 4 bits of the tag byte indicate the general data type.
     The low-order 4 bits supply additional information.
     """
-    let dtag = _buffer.u8()
+    let dtag = _buffer.u8()?
     let high = (dtag and 0xF0).u8()
     let low =  (dtag and 0x0F).usize()
 
@@ -180,38 +180,38 @@ class BinRecReader
     | _BRDT.uint() =>
        // Low 4 bits say how many bytes in the value of an unsigned int.
        match low
-       | 0 => return _buffer.u8().usize()
-       | 1 => return _buffer.u16_be().usize()
-       | 2 => return _buffer.u32_be().usize()
-       | 3 => return _buffer.u64_be().usize()
+       | 0 => return _buffer.u8()?.usize()
+       | 1 => return _buffer.u16_be()?.usize()
+       | 2 => return _buffer.u32_be()?.usize()
+       | 3 => return _buffer.u64_be()?.usize()
        end
 
    | _BRDT.tiny_str() =>
        // Low 4 bits tell how many bytes in a short string.
        let len   = low.usize()
-       let value = _buffer.block(len)
+       let value = _buffer.block(len)?
        String.from_array( consume value )
 
     | _BRDT.string() =>
        // Low 4 bits tell how many bytes in the length of the string.
        let len = match low
-         | 0 => _buffer.u8().usize()
-         | 1 => _buffer.u16_be().usize()
-         | 2 => _buffer.u32_be().usize()
+         | 0 => _buffer.u8()?.usize()
+         | 1 => _buffer.u16_be()?.usize()
+         | 2 => _buffer.u32_be()?.usize()
          else 0
        end
-       let value = _buffer.block(len)
+       let value = _buffer.block(len)?
        String.from_array( consume value )
 
     | _BRDT.blob() =>
        // Low 4 bits tell how many bytes in the length of the binary blob.
        let len = match low
-         | 0 => _buffer.u8().usize()
-         | 1 => _buffer.u16_be().usize()
-         | 2 => _buffer.u32_be().usize()
+         | 0 => _buffer.u8()?.usize()
+         | 1 => _buffer.u16_be()?.usize()
+         | 2 => _buffer.u32_be()?.usize()
          else 0
        end
-       _buffer.block(len)
+       _buffer.block(len)?
    end
 
   fun ref has_next(): Bool =>
@@ -248,7 +248,6 @@ class BRValueIterator is Iterator[BinType]
     match _limit
       | let n: USize => (n > 0)
       | None => _base.has_next()
-      else false
     end
 
   fun ref next(): BinType ? =>
@@ -257,7 +256,7 @@ class BRValueIterator is Iterator[BinType]
     match _limit
     | let n: USize => _limit = n - 1
     end
-    _base.next()
+    _base.next()?
 
 class BRPairIterator is Iterator[(BinType,BinType)]
   """
@@ -278,7 +277,6 @@ class BRPairIterator is Iterator[(BinType,BinType)]
     match _limit
       | None => _base.has_next()
       | let n: USize => (n > 0)
-      else false
     end
 
   fun ref next(): (BinType,BinType) ? =>
@@ -287,6 +285,6 @@ class BRPairIterator is Iterator[(BinType,BinType)]
     match _limit
     | let n: USize => _limit = n - 1
     end
-    let key = _base.next()
-    let value = _base.next()
+    let key = _base.next()?
+    let value = _base.next()?
     (key, value)
