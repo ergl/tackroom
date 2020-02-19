@@ -23,7 +23,7 @@ the following:
 
   All of the pointer arguments must be non-NULL.
 */
-  
+
 // LevelDB is available from https://github.com/google/leveldb.git
 use "lib:leveldb"
 
@@ -64,7 +64,7 @@ use @leveldb_get[Pointer[U8]]( db: Pointer[U8] tag,
     const leveldb_readoptions_t* options); */
 use @leveldb_create_iterator[Pointer[U8]]( db: Pointer[U8],
    ropts: Pointer[U8] )
-      
+
 /* extern const leveldb_snapshot_t* leveldb_create_snapshot(
     leveldb_t* db); */
 
@@ -263,7 +263,7 @@ class LDBvalue is Iterator[String]
 
   fun ref has_next(): Bool => _cursor.has_next()
   fun ref next(): String ? =>
-    _cursor.next()
+    _cursor.next()?
     _cursor.get_value()
 
 class LDBkey is Iterator[String]
@@ -273,7 +273,7 @@ class LDBkey is Iterator[String]
 
   fun ref has_next(): Bool => _cursor.has_next()
   fun ref next(): String ? =>
-    _cursor.next()
+    _cursor.next()?
     _cursor.get_key()
 
 class LDBpair is Iterator[(String,String)]
@@ -283,7 +283,7 @@ class LDBpair is Iterator[(String,String)]
 
   fun ref has_next(): Bool => _cursor.has_next()
   fun ref next(): (String,String) ? =>
-    _cursor.next()
+    _cursor.next()?
     (_cursor.get_key(),_cursor.get_value())
 
 class LDBcursor
@@ -313,7 +313,7 @@ class LDBcursor
     @leveldb_iter_next( _iter )
     _errptr = Pointer[U8].create()
     @leveldb_iter_get_error( _iter, addressof _errptr )
-    if not _errptr.is_null() then error end	  
+    if not _errptr.is_null() then error end
 
   fun get_value(): String =>
     """
@@ -375,11 +375,11 @@ class LevelDB
     else
        String.from_cstring( errptr )
     end
- 
+
   fun ref update( key: ByteSeq, value: ByteSeq ) ? =>
     """
     Write operations are 'update' so that Pony syntactic sugar will work
-    for statements like 
+    for statements like
 	    db( key ) = value
     """
     errptr = Pointer[U8].create()
@@ -389,8 +389,8 @@ class LevelDB
         (if _syncwrite then 1 else 0 end) )
 
     @leveldb_put( _dbhandle, opts,
-		key.cstring(), key.size(),
-		value.cstring(), value.size(),
+		key.cpointer(), key.size(),
+		value.cpointer(), value.size(),
 		addressof errptr)
     @leveldb_writeoptions_destroy( opts )
     if not errptr.is_null() then error end
@@ -406,12 +406,12 @@ class LevelDB
     errptr = Pointer[U8].create()
     // No options for now.
     let opts = @leveldb_options_create()
-    let result = @leveldb_get( _dbhandle, opts, key.cstring(), key.size(),
+    let result = @leveldb_get( _dbhandle, opts, key.cpointer(), key.size(),
     addressof vlen, addressof errptr)
     // Free the options structure
     @leveldb_options_destroy( opts )
     // Check for errors
-    chkerror( errptr )
+    chkerror( errptr )?
     // result is null if record not found
     if result.is_null() then
       error
@@ -420,7 +420,7 @@ class LevelDB
       // a 'malloc' of this data - hopefully Pony will GC it properly.
       // If not, try String.copy_cstring.
       //Array[U8].from_cstring( result, vlen )
-      String.from_cstring( result, vlen )
+      String.from_cpointer( result, vlen )
     end
 
   fun ref chkerror( err: Pointer[U8] ) ? =>
@@ -434,7 +434,7 @@ class LevelDB
   else
 	  String.copy_cstring( errptr )
   end
-  
+
 
   fun ref delete( key: String ) ? =>
     """
@@ -447,11 +447,10 @@ class LevelDB
         key.cstring(), key.size(),
         addressof errptr )
     @leveldb_options_destroy( opts )
-    chkerror( errptr )
-    
+    chkerror( errptr )?
+
   fun ref close() =>
     """
     Close the database connection.
     """
     @leveldb_close( _dbhandle )
-		
