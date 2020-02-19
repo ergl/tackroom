@@ -39,7 +39,7 @@ class SqliteDB
   """
   var handle: Pointer[_PPdb] tag = Pointer[_PPdb].create()
   let _notify: (None | SQLNotify)
-  
+
   new create( notify: (SQLNotify | None), name: String,
 	  flags: U32 = SqliteOpen.readwrite() ) =>
     """
@@ -139,7 +139,7 @@ class SqliteStmt
 	    var len: USize = size.usize()
 	    recover val
 	      let ptr = @sqlite3_column_blob( hdl, col )
-	      Array[U8].from_cstring( ptr, len ).clone()
+	      Array[U8].from_cpointer( ptr, len ).clone()
 	    end
     else
       recover val Array[U8].create() end
@@ -165,7 +165,7 @@ class SqliteStmt
       | let s: String =>
         @sqlite3_bind_text( handle, column, s.cstring(), s.size() )
       | let a: Array[U8] =>
-	      @sqlite3_bind_blob( handle, column, a.cstring(), a.size() )
+	      @sqlite3_bind_blob( handle, column, a.cpointer(), a.size() )
       | let n: ISize =>
 	      @sqlite3_bind_int( handle, column, n )
       | let n: F64 =>
@@ -177,7 +177,7 @@ class SqliteStmt
     Reset the cursor back to its initial state.
     """
     @sqlite3_reset( handle )
-		
+
   fun ref close() =>
     @sqlite3_finalize( handle )
 
@@ -198,4 +198,3 @@ interface SQLNotify
     Called when an operation fails.
     """
     None
-		

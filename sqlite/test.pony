@@ -46,4 +46,3 @@ class SqlTestNotify is SQLNotify
 
   fun ref fail( code: U32, msg: String ) =>
     env.out.print("SQLite error "+code.string()+", "+msg)
-
